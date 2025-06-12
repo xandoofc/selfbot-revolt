@@ -1,3 +1,6 @@
+const fetch = require('node-fetch');
+const sendEmbed = require('../utils/sendEmbed');
+
 module.exports = {
     name: 'user',
     description: 'Mostra informações sobre um usuário',
@@ -5,65 +8,103 @@ module.exports = {
     cooldown: 5,
     async execute(message, args, client) {
         try {
-            // Pegar o usuário mencionado ou o autor da mensagem
-            const targetUser = message.mentions?.length > 0 
-                ? await message.channel.server.members.get(message.mentions[0])
-                : message.member;
+            // Verificar argumentos
+            const targetId = args[0]?.replace(/[<@>]/g, '') || message.author._id;
 
-            if (!targetUser) {
-                await message.channel.sendMessage('❌ Usuário não encontrado.');
-                return;
+            // Buscar informações do usuário via API
+            const response = await fetch(`https://api.revolt.chat/users/${targetId}`, {
+                headers: {
+                    'x-session-token': client.token
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            // Formatar data de criação da conta
-            const createdAt = new Date(targetUser.createdAt);
-            const createdAtFormatted = createdAt.toLocaleDateString('pt-BR', {
+            const user = await response.json();
+
+            // Buscar informações do membro se estiver em um servidor
+            let member = null;
+            if (message.member?._id?.server) {
+                const memberResponse = await fetch(`https://api.revolt.chat/servers/${message.member._id.server}/members/${targetId}`, {
+                    headers: {
+                        'x-session-token': client.token
+                    }
+                });
+
+                if (memberResponse.ok) {
+                    member = await memberResponse.json();
+                }
+            }
+
+            // Formatar data de entrada
+            const joinedAt = member?.joined_at ? new Date(member.joined_at).toLocaleDateString('pt-BR', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
-            });
+            }) : 'N/A';
 
-            // Pegar informações do servidor se disponível
-            let serverInfo = '';
-            if (message.channel.server) {
-                const member = await message.channel.server.members.get(targetUser._id);
-                if (member) {
-                    const joinedAt = new Date(member.joinedAt);
-                    const joinedAtFormatted = joinedAt.toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-
-                    const roles = member.roles
-                        .map(roleId => message.channel.server.roles.get(roleId))
-                        .filter(role => role)
-                        .map(role => role.name)
-                        .join(', ');
-
-                    serverInfo = `\n📅 **Entrou no servidor em:** ${joinedAtFormatted}\n` +
-                        `👥 **Cargos:** ${roles || 'Nenhum'}`;
-                }
+            // Construir URL do avatar
+            let avatarUrl = null;
+            if (user.avatar) {
+                avatarUrl = `https://cdn.revolt.chat/avatars/${user.avatar._id}/${user.avatar.filename}`;
             }
 
-            // Construir a mensagem
-            const userInfo = `👤 **Informações do Usuário**\n\n` +
-                `🆔 **ID:** ${targetUser._id}\n` +
-                `👤 **Username:** ${targetUser.username}\n` +
-                `📝 **Conta criada em:** ${createdAtFormatted}\n` +
-                `🤖 **Bot:** ${targetUser.bot ? 'Sim' : 'Não'}` +
-                serverInfo;
+            // Construir descrição
+            const description = [
+                '# 👤 Perfil do Usuário',
+                '',
+                '## 📋 Informações Básicas',
+                `- **Nome:** ${user.username}`,
+                `- **ID:** \`${user._id}\``,
+                `- **Tag:** ${user.discriminator || 'Nenhuma'}`,
+                '',
+                '## 🎮 Status',
+                `- **Online:** ${user.online ? '✅' : '❌'}`,
+                `- **Status:** ${user.status?.text || 'Nenhum'}`,
+                `- **Presença:** ${user.status?.presence || 'Desconhecida'}`,
+                '',
+                member ? [
+                    '## 📅 Informações do Servidor',
+                    `- **Entrou em:** ${joinedAt}`,
+                    member.nickname ? `- **Apelido:** ${member.nickname}` : '',
+                    member.roles?.length ? `- **Cargos:** ${member.roles.map(r => `<@&${r}>`).join(', ')}` : '',
+                    ''
+                ].filter(Boolean).join('\n') : '',
+                '## 🎨 Personalização',
+                `- **Avatar:** ${user.avatar ? '✅' : '❌'}`,
+                `- **Banner:** ${user.banner ? '✅' : '❌'}`,
+                '',
+                '> Use `!help` para ver outros comandos disponíveis'
+            ].filter(Boolean).join('\n');
 
-            // Enviar a mensagem
-            await message.channel.sendMessage(userInfo);
+            await sendEmbed(message.channel.id || message.channel, client.token, {
+                title: `👤 ${user.username}`,
+                description: description,
+                url: 'https://github.com/xandoofc/selfbot-revolt',
+                media: avatarUrl
+            });
 
         } catch (error) {
             console.error('Erro ao mostrar informações do usuário:', error);
-            await message.channel.sendMessage(`❌ Ocorreu um erro ao buscar informações do usuário: ${error.message}`);
+            await sendEmbed(message.channel.id || message.channel, client.token, {
+                title: '❌ Erro',
+                description: [
+                    '# Erro ao Buscar Usuário',
+                    '',
+                    '```',
+                    error.message,
+                    '```',
+                    '',
+                    '> Verifique se:',
+                    '- O usuário mencionado existe',
+                    '- O ID do usuário é válido',
+                    '- O bot tem permissão para ver o usuário'
+                ].join('\n')
+            });
         }
     }
 }; 
