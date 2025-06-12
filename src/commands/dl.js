@@ -22,6 +22,7 @@ module.exports = {
 
             const url = args[0];
             const downloadDir = path.join(__dirname, '../../downloads');
+            const cookiesFile = path.join(__dirname, '../../config/cookies.txt');
 
             // Criar diretório de downloads se não existir
             if (!fs.existsSync(downloadDir)) {
@@ -38,12 +39,27 @@ module.exports = {
             // Usar yt-dlp para baixar o conteúdo
             const outputTemplate = path.join(downloadDir, '%(title)s.%(ext)s');
             
-            // Adiciona cookies do Chrome para TikTok
-            const command = `yt-dlp "${url}" -o "${outputTemplate}" --no-playlist --max-filesize 25m --cookies-from-browser chrome`;
+            // Usar arquivo de cookies
+            const command = `yt-dlp "${url}" -o "${outputTemplate}" --no-playlist --max-filesize 25m --cookies ${cookiesFile}`;
 
             exec(command, async (error, stdout, stderr) => {
                 if (error) {
                     console.error('Erro ao baixar:', error);
+                    
+                    // Se for erro de autenticação do TikTok
+                    if (error.message.includes('Video is private') || error.message.includes('Login required')) {
+                        const helpFormatter = new MessageFormatter()
+                            .setTitle('Erro de Autenticação')
+                            .setDescription('Para baixar este vídeo, você precisa adicionar os cookies do TikTok. Siga os passos:\n\n' +
+                                '1. Faça login no TikTok pelo navegador\n' +
+                                '2. Use o comando `!cookies <cookies>` com os cookies do TikTok\n' +
+                                '3. Tente baixar o vídeo novamente')
+                            .setTimestamp();
+
+                        await client.sendMessage(message.channel, helpFormatter.toJSON());
+                        return;
+                    }
+
                     const errorFormatter = new MessageFormatter()
                         .setTitle('Erro')
                         .setDescription(`Não foi possível baixar a mídia: ${error.message}`)
