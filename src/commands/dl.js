@@ -18,19 +18,24 @@ async function uploadWithRetry(fileBuffer, filename, maxRetries = 3, initialDela
             const form = new FormData();
             form.append('file', fileBuffer, {
                 filename: filename,
-                contentType: 'application/octet-stream'
+                contentType: 'video/mp4'
             });
 
             const response = await fetch(uploadUrl, {
                 method: 'POST',
-                body: form
+                body: form,
+                headers: {
+                    ...form.getHeaders(),
+                    'Accept': '*/*'
+                }
             });
 
             if (response.ok) {
                 return await response.json();
             }
 
-            throw new Error(`Upload failed with status ${response.status}`);
+            const responseText = await response.text();
+            throw new Error(`Upload failed with status ${response.status}: ${responseText}`);
         } catch (error) {
             console.error(`Tentativa ${attempt + 1} falhou:`, error.message);
             lastError = error;
@@ -44,7 +49,7 @@ async function uploadWithRetry(fileBuffer, filename, maxRetries = 3, initialDela
 }
 
 // Função para dividir arquivo em partes menores
-async function splitFile(filePath, maxSizeMB = 7) {
+async function splitFile(filePath, maxSizeMB = 5) {
     const stats = fs.statSync(filePath);
     const maxSize = maxSizeMB * 1024 * 1024; // Converter para bytes
     
@@ -84,6 +89,23 @@ async function splitFile(filePath, maxSizeMB = 7) {
     return parts;
 }
 
+// Função para enviar mensagem com retry
+async function sendMessageWithRetry(client, channelId, content, maxRetries = 3) {
+    let lastError;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            return await client.sendMessage(channelId, content);
+        } catch (error) {
+            console.error(`Tentativa ${attempt + 1} de enviar mensagem falhou:`, error.message);
+            lastError = error;
+            if (attempt < maxRetries - 1) {
+                await wait(1000 * Math.pow(2, attempt));
+            }
+        }
+    }
+    throw lastError;
+}
+
 module.exports = {
     name: 'dl',
     description: 'Baixa mídia de várias plataformas (TikTok, Instagram, etc)',
@@ -95,7 +117,7 @@ module.exports = {
 
         try {
             if (!args.length) {
-                await client.sendMessage(message.channel, {
+                await sendMessageWithRetry(client, message.channel, {
                     content: '❌ Por favor, forneça um link! Exemplo: !dl https://www.tiktok.com/...'
                 });
                 return;
@@ -110,7 +132,7 @@ module.exports = {
                 fs.mkdirSync(downloadDir, { recursive: true });
             }
 
-            const statusMessage = await client.sendMessage(message.channel, {
+            await sendMessageWithRetry(client, message.channel, {
                 content: '⏳ Baixando mídia, aguarde...'
             });
 
@@ -126,7 +148,7 @@ module.exports = {
                     
                     // Se for erro de autenticação do TikTok
                     if (error.message.includes('Video is private') || error.message.includes('Login required')) {
-                        await client.sendMessage(message.channel, {
+                        await sendMessageWithRetry(client, message.channel, {
                             content: '🔒 Para baixar este vídeo, você precisa adicionar os cookies do TikTok. Siga os passos:\n\n' +
                                 '1. Faça login no TikTok pelo navegador\n' +
                                 '2. Use o comando `!cookies <cookies>` com os cookies do TikTok\n' +
@@ -135,7 +157,7 @@ module.exports = {
                         return;
                     }
 
-                    await client.sendMessage(message.channel, {
+                    await sendMessageWithRetry(client, message.channel, {
                         content: `❌ Não foi possível baixar a mídia: ${error.message}`
                     });
                     return;
@@ -152,7 +174,7 @@ module.exports = {
                         .sort((a, b) => b.time - a.time)[0];
 
                     if (!latestFile) {
-                        await client.sendMessage(message.channel, {
+                        await sendMessageWithRetry(client, message.channel, {
                             content: '❌ Não foi possível encontrar o arquivo baixado.'
                         });
                         return;
@@ -177,7 +199,7 @@ module.exports = {
                             console.log(`Parte ${i + 1}/${splitFiles.length} enviada com sucesso`);
 
                             // Enviar a mensagem com o arquivo anexado
-                            await client.sendMessage(message.channel, {
+                            await sendMessageWithRetry(client, message.channel, {
                                 content: splitFiles.length > 1 ? `📤 Parte ${i + 1}/${splitFiles.length}` : '',
                                 attachments: [uploadResult.id]
                             });
@@ -188,7 +210,8 @@ module.exports = {
                             console.log('Tentando método alternativo de upload...');
                             
                             try {
-                                await client.sendMessage(message.channel, {
+                                // Tentar enviar como buffer direto
+                                await sendMessageWithRetry(client, message.channel, {
                                     content: splitFiles.length > 1 ? `📤 Parte ${i + 1}/${splitFiles.length}` : '',
                                     attachments: [{
                                         name: partName,
@@ -198,24 +221,31 @@ module.exports = {
                                 });
                             } catch (alternativeError) {
                                 console.error('Erro no método alternativo:', alternativeError);
-                                throw alternativeError;
+                                
+                                // Se ambos os métodos falharem, tentar salvar localmente
+                                const savePath = path.join(process.cwd(), 'downloads', partName);
+                                fs.writeFileSync(savePath, partBuffer);
+                                
+                                await sendMessageWithRetry(client, message.channel, {
+                                    content: `❌ Não foi possível enviar o arquivo. Ele foi salvo em: ${savePath}`
+                                });
                             }
                         }
 
                         // Pequena pausa entre uploads
                         if (i < splitFiles.length - 1) {
-                            await wait(1000);
+                            await wait(2000);
                         }
                     }
 
                     // Mensagem de sucesso final
-                    await client.sendMessage(message.channel, {
+                    await sendMessageWithRetry(client, message.channel, {
                         content: `✅ Mídia ${splitFiles.length > 1 ? '(todas as partes)' : ''} enviada com sucesso!`
                     });
 
                 } catch (error) {
                     console.error('Erro ao processar arquivo:', error);
-                    await client.sendMessage(message.channel, {
+                    await sendMessageWithRetry(client, message.channel, {
                         content: `❌ Erro ao processar arquivo: ${error.message}`
                     });
                 } finally {
@@ -236,7 +266,7 @@ module.exports = {
             });
         } catch (error) {
             console.error('Erro no comando dl:', error);
-            await client.sendMessage(message.channel, {
+            await sendMessageWithRetry(client, message.channel, {
                 content: `❌ Ocorreu um erro: ${error.message}`
             });
         }
