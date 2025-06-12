@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const MessageFormatter = require('../utils/MessageEmbed');
 
 module.exports = {
     name: 'cookies',
@@ -10,19 +9,16 @@ module.exports = {
     async execute(message, args, client) {
         try {
             if (!args.length) {
-                const formatter = new MessageFormatter()
-                    .setTitle('Como usar os cookies')
-                    .setDescription('Para configurar os cookies do TikTok:\n\n' +
+                await client.sendMessage(message.channel, {
+                    content: '🍪 Como usar os cookies:\n\n' +
                         '1. Acesse TikTok.com e faça login\n' +
                         '2. Pressione F12 para abrir as ferramentas do desenvolvedor\n' +
                         '3. Vá na aba "Network"\n' +
                         '4. Procure por qualquer requisição para "tiktok.com"\n' +
                         '5. Na aba "Headers", procure por "cookie" nos cabeçalhos da requisição\n' +
                         '6. Copie todo o valor do cookie\n' +
-                        '7. Use o comando: !cookies seu_cookie_aqui')
-                    .setTimestamp();
-
-                await client.sendMessage(message.channel, formatter.toJSON());
+                        '7. Use o comando: !cookies seu_cookie_aqui'
+                });
                 return;
             }
 
@@ -46,22 +42,15 @@ module.exports = {
             // Salvar cookies
             fs.writeFileSync(cookiesFile, '# Netscape HTTP Cookie File\n' + formattedCookies);
 
-            const formatter = new MessageFormatter()
-                .setTitle('Cookies Configurados')
-                .setDescription('✅ Cookies do TikTok foram salvos com sucesso!\n\n' +
-                    'Agora você pode usar o comando !dl para baixar vídeos.')
-                .setTimestamp();
-
-            await client.sendMessage(message.channel, formatter.toJSON());
+            await client.sendMessage(message.channel, {
+                content: '✅ Cookies do TikTok foram salvos com sucesso!\n\nAgora você pode usar o comando !dl para baixar vídeos.'
+            });
 
         } catch (error) {
             console.error('Erro no comando cookies:', error);
-            const formatter = new MessageFormatter()
-                .setTitle('Erro')
-                .setDescription(`Ocorreu um erro ao salvar os cookies: ${error.message}`)
-                .setTimestamp();
-
-            await client.sendMessage(message.channel, formatter.toJSON());
+            await client.sendMessage(message.channel, {
+                content: `❌ Ocorreu um erro ao salvar os cookies: ${error.message}`
+            });
         }
     }
 }; 
