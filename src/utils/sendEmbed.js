@@ -17,25 +17,20 @@ async function sendEmbed(channel, token, embed) {
         // Preparar o corpo da requisição
         const payload = {
             content: "",
-            embeds: [
-                {
-                    type: "Text",
-                    title: embed.title || "",
-                    description: embed.description || "",
-                    colour: "#a81808",
-                    url: embed.url || undefined,
-                    icon_url: embed.icon_url || undefined,
-                    media: embed.media ? {
-                        url: embed.media
-                    } : undefined
-                }
-            ]
+            embeds: [{
+                title: embed.title || "",
+                description: embed.description || "",
+                colour: "a81808",
+                url: embed.url || "https://github.com/xandoofc/selfbot-revolt"
+            }]
         };
 
-        // Remover campos undefined
-        if (payload.embeds[0].url === undefined) delete payload.embeds[0].url;
-        if (payload.embeds[0].icon_url === undefined) delete payload.embeds[0].icon_url;
-        if (payload.embeds[0].media === undefined) delete payload.embeds[0].media;
+        // Adicionar media apenas se existir
+        if (embed.media) {
+            payload.embeds[0].media = {
+                url: embed.media
+            };
+        }
 
         // Log para debug
         console.log('Enviando payload:', JSON.stringify(payload, null, 2));
@@ -48,31 +43,18 @@ async function sendEmbed(channel, token, embed) {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify(payload),
-            redirect: 'follow', // Seguir redirecionamentos
-            follow: 5 // Máximo de 5 redirecionamentos
+            body: JSON.stringify(payload)
         });
-
-        // Verificar o tipo de conteúdo da resposta
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('text/html')) {
-            throw new Error('API retornou HTML em vez de JSON. Token pode estar expirado.');
-        }
 
         const responseData = await response.json();
 
         if (!response.ok) {
             console.error('Erro da API:', responseData);
-            throw new Error(`Erro ao enviar mensagem: ${responseData.type || responseData.message || response.statusText}`);
+            throw new Error(`Erro ao enviar mensagem: ${responseData.error?.reason || responseData.type || response.statusText}`);
         }
 
         return responseData;
     } catch (error) {
-        // Se for erro de HTML, tentar reautenticar
-        if (error.message.includes('HTML')) {
-            console.error('Erro de autenticação. Token pode ter expirado.');
-            // Aqui você pode implementar uma lógica de reautenticação se necessário
-        }
         console.error('Erro em sendEmbed:', error);
         throw error;
     }
