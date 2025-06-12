@@ -17,17 +17,19 @@ async function sendEmbed(channel, token, embed) {
         // Preparar o corpo da requisição
         const payload = {
             content: "",
-            embeds: [{
-                type: "Text",
-                title: embed.title || "",
-                description: embed.description || "",
-                colour: "#a81808",
-                url: embed.url || undefined,
-                icon_url: embed.icon_url || undefined,
-                media: embed.media ? {
-                    url: embed.media
-                } : undefined
-            }]
+            embeds: [
+                {
+                    type: "Text",
+                    title: embed.title || "",
+                    description: embed.description || "",
+                    colour: "#a81808",
+                    url: embed.url || undefined,
+                    icon_url: embed.icon_url || undefined,
+                    media: embed.media ? {
+                        url: embed.media
+                    } : undefined
+                }
+            ]
         };
 
         // Remover campos undefined
@@ -43,10 +45,19 @@ async function sendEmbed(channel, token, embed) {
             method: 'POST',
             headers: {
                 'x-session-token': token,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            redirect: 'follow', // Seguir redirecionamentos
+            follow: 5 // Máximo de 5 redirecionamentos
         });
+
+        // Verificar o tipo de conteúdo da resposta
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+            throw new Error('API retornou HTML em vez de JSON. Token pode estar expirado.');
+        }
 
         const responseData = await response.json();
 
@@ -57,6 +68,11 @@ async function sendEmbed(channel, token, embed) {
 
         return responseData;
     } catch (error) {
+        // Se for erro de HTML, tentar reautenticar
+        if (error.message.includes('HTML')) {
+            console.error('Erro de autenticação. Token pode ter expirado.');
+            // Aqui você pode implementar uma lógica de reautenticação se necessário
+        }
         console.error('Erro em sendEmbed:', error);
         throw error;
     }
