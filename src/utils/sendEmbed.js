@@ -20,7 +20,7 @@ async function sendEmbed(channel, token, embed) {
             embeds: [{
                 title: embed.title || "",
                 description: embed.description || "",
-                colour: "a81808",
+                colour: "#a81808",
                 url: embed.url || "https://github.com/xandoofc/selfbot-revolt"
             }]
         };
