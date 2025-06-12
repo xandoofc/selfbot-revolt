@@ -25,8 +25,7 @@ module.exports = {
                 `🖥️ CPU: ${os.cpus()[0].model}\n` +
                 `💻 Sistema: ${os.type()} ${os.release()}\n\n` +
                 `📈 **Estatísticas**\n` +
-                `🗂️ Comandos: ${client.commands.size}\n` +
-                `🌐 Ping: ${client.websocket.ping}ms`;
+                `🗂️ Comandos: ${client.commands.size}`;
 
             await client.sendMessage(message.channel, {
                 content: info

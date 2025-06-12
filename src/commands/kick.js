@@ -9,7 +9,11 @@ module.exports = {
     async execute(message, args, client) {
         try {
             // Verificar permissões
-            if (!message.member.hasPermission('KickMembers')) {
+            const member = await message.channel.server.fetchMember(message.author._id);
+            if (!member.roles.some(role => {
+                const serverRole = message.channel.server.roles.get(role);
+                return serverRole && serverRole.permissions.includes('KickMembers');
+            })) {
                 await client.sendMessage(message.channel, {
                     content: '❌ Você não tem permissão para expulsar membros!'
                 });
@@ -37,7 +41,10 @@ module.exports = {
             }
 
             // Verificar se o usuário tem permissão para expulsar o alvo
-            if (targetMember.hasPermission('KickMembers')) {
+            if (targetMember.roles.some(role => {
+                const serverRole = message.channel.server.roles.get(role);
+                return serverRole && serverRole.permissions.includes('KickMembers');
+            })) {
                 await client.sendMessage(message.channel, {
                     content: '❌ Você não pode expulsar este usuário!'
                 });

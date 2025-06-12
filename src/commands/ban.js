@@ -6,7 +6,11 @@ module.exports = {
     async execute(message, args, client) {
         try {
             // Verificar permissões
-            if (!message.member.hasPermission('BanMembers')) {
+            const member = await message.channel.server.fetchMember(message.author._id);
+            if (!member.roles.some(role => {
+                const serverRole = message.channel.server.roles.get(role);
+                return serverRole && serverRole.permissions.includes('BanMembers');
+            })) {
                 await client.sendMessage(message.channel, {
                     content: '❌ Você não tem permissão para banir membros!'
                 });
@@ -34,7 +38,10 @@ module.exports = {
             }
 
             // Verificar se o usuário tem permissão para banir o alvo
-            if (targetMember.hasPermission('BanMembers')) {
+            if (targetMember.roles.some(role => {
+                const serverRole = message.channel.server.roles.get(role);
+                return serverRole && serverRole.permissions.includes('BanMembers');
+            })) {
                 await client.sendMessage(message.channel, {
                     content: '❌ Você não pode banir este usuário!'
                 });

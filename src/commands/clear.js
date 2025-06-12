@@ -6,7 +6,11 @@ module.exports = {
     async execute(message, args, client) {
         try {
             // Verificar permissões
-            if (!message.member.hasPermission('ManageMessages')) {
+            const member = await message.channel.server.fetchMember(message.author._id);
+            if (!member.roles.some(role => {
+                const serverRole = message.channel.server.roles.get(role);
+                return serverRole && serverRole.permissions.includes('ManageMessages');
+            })) {
                 await client.sendMessage(message.channel, {
                     content: '❌ Você não tem permissão para usar este comando!'
                 });
