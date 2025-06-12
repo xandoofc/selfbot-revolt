@@ -25,13 +25,6 @@ async function sendEmbed(channel, token, embed) {
             }]
         };
 
-        // Adicionar media apenas se existir
-        if (embed.media) {
-            payload.embeds[0].media = {
-                url: embed.media
-            };
-        }
-
         // Log para debug
         console.log('Enviando payload:', JSON.stringify(payload, null, 2));
 
