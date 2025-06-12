@@ -27,11 +27,11 @@ module.exports = {
                 `📈 **Estatísticas**\n` +
                 `🗂️ Comandos: ${client.commands.size}`;
 
-            await message.reply(info);
+            await message.channel.sendMessage(info);
 
         } catch (error) {
             console.error('Erro ao mostrar informações:', error);
-            await message.reply(`❌ Ocorreu um erro ao buscar informações: ${error.message}`);
+            await message.channel.sendMessage(`❌ Ocorreu um erro ao buscar informações: ${error.message}`);
         }
     }
 }; 

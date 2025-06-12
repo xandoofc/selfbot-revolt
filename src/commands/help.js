@@ -42,11 +42,11 @@ module.exports = {
             }
 
             // Enviar mensagem
-            await message.reply(helpMessage);
+            await message.channel.sendMessage(helpMessage);
 
         } catch (error) {
             console.error('Erro no comando help:', error);
-            await message.reply(`❌ Ocorreu um erro ao listar os comandos: ${error.message}`);
+            await message.channel.sendMessage(`❌ Ocorreu um erro ao listar os comandos: ${error.message}`);
         }
     }
 }; 

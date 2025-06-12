@@ -7,11 +7,11 @@ module.exports = {
         try {
             // Pegar o usuário mencionado ou o autor da mensagem
             const targetUser = message.mentions?.length > 0 
-                ? await client.users.fetch(message.mentions[0])
-                : message.author;
+                ? await message.channel.server.members.get(message.mentions[0])
+                : message.member;
 
             if (!targetUser) {
-                await message.reply('❌ Usuário não encontrado.');
+                await message.channel.sendMessage('❌ Usuário não encontrado.');
                 return;
             }
 
@@ -28,7 +28,7 @@ module.exports = {
             // Pegar informações do servidor se disponível
             let serverInfo = '';
             if (message.channel.server) {
-                const member = await message.channel.server.fetchMember(targetUser._id);
+                const member = await message.channel.server.members.get(targetUser._id);
                 if (member) {
                     const joinedAt = new Date(member.joinedAt);
                     const joinedAtFormatted = joinedAt.toLocaleDateString('pt-BR', {
@@ -59,11 +59,11 @@ module.exports = {
                 serverInfo;
 
             // Enviar a mensagem
-            await message.reply(userInfo);
+            await message.channel.sendMessage(userInfo);
 
         } catch (error) {
             console.error('Erro ao mostrar informações do usuário:', error);
-            await message.reply(`❌ Ocorreu um erro ao buscar informações do usuário: ${error.message}`);
+            await message.channel.sendMessage(`❌ Ocorreu um erro ao buscar informações do usuário: ${error.message}`);
         }
     }
 }; 

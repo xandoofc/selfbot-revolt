@@ -9,18 +9,18 @@ module.exports = {
     async execute(message, args, client) {
         try {
             // Verificar permissões
-            const member = await message.channel.server.fetchMember(message.author._id);
+            const member = await message.channel.server.members.get(message.author._id);
             if (!member.roles.some(role => {
                 const serverRole = message.channel.server.roles.get(role);
                 return serverRole && serverRole.permissions.includes('KickMembers');
             })) {
-                await message.reply('❌ Você não tem permissão para expulsar membros!');
+                await message.channel.sendMessage('❌ Você não tem permissão para expulsar membros!');
                 return;
             }
 
             // Verificar se um usuário foi mencionado
             if (!message.mentions?.length) {
-                await message.reply('❌ Por favor, mencione o usuário que deseja expulsar! Exemplo: !kick @usuário [motivo]');
+                await message.channel.sendMessage('❌ Por favor, mencione o usuário que deseja expulsar! Exemplo: !kick @usuário [motivo]');
                 return;
             }
 
@@ -28,9 +28,9 @@ module.exports = {
             const reason = args.slice(1).join(' ') || 'Nenhum motivo fornecido';
 
             // Verificar se o bot pode expulsar o usuário
-            const targetMember = await message.channel.server.fetchMember(targetId);
+            const targetMember = await message.channel.server.members.get(targetId);
             if (!targetMember) {
-                await message.reply('❌ Usuário não encontrado no servidor!');
+                await message.channel.sendMessage('❌ Usuário não encontrado no servidor!');
                 return;
             }
 
@@ -39,7 +39,7 @@ module.exports = {
                 const serverRole = message.channel.server.roles.get(role);
                 return serverRole && serverRole.permissions.includes('KickMembers');
             })) {
-                await message.reply('❌ Você não pode expulsar este usuário!');
+                await message.channel.sendMessage('❌ Você não pode expulsar este usuário!');
                 return;
             }
 
@@ -48,7 +48,7 @@ module.exports = {
                 await message.channel.server.kickMember(targetId, reason);
 
                 // Enviar confirmação
-                await message.reply(`✅ Usuário <@${targetId}> foi expulso!\n📝 Motivo: ${reason}`);
+                await message.channel.sendMessage(`✅ Usuário <@${targetId}> foi expulso!\n📝 Motivo: ${reason}`);
 
                 // Tentar notificar o usuário
                 try {
@@ -60,12 +60,12 @@ module.exports = {
 
             } catch (kickError) {
                 console.error('Erro ao expulsar usuário:', kickError);
-                await message.reply(`❌ Não foi possível expulsar o usuário: ${kickError.message}`);
+                await message.channel.sendMessage(`❌ Não foi possível expulsar o usuário: ${kickError.message}`);
             }
 
         } catch (error) {
             console.error('Erro no comando kick:', error);
-            await message.reply(`❌ Ocorreu um erro: ${error.message}`);
+            await message.channel.sendMessage(`❌ Ocorreu um erro: ${error.message}`);
         }
     }
 }; 

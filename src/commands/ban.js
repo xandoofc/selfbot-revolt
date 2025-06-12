@@ -6,18 +6,18 @@ module.exports = {
     async execute(message, args, client) {
         try {
             // Verificar permissões
-            const member = await message.channel.server.fetchMember(message.author._id);
+            const member = await message.channel.server.members.get(message.author._id);
             if (!member.roles.some(role => {
                 const serverRole = message.channel.server.roles.get(role);
                 return serverRole && serverRole.permissions.includes('BanMembers');
             })) {
-                await message.reply('❌ Você não tem permissão para banir membros!');
+                await message.channel.sendMessage('❌ Você não tem permissão para banir membros!');
                 return;
             }
 
             // Verificar se um usuário foi mencionado
             if (!message.mentions?.length) {
-                await message.reply('❌ Por favor, mencione o usuário que deseja banir! Exemplo: !ban @usuário [motivo]');
+                await message.channel.sendMessage('❌ Por favor, mencione o usuário que deseja banir! Exemplo: !ban @usuário [motivo]');
                 return;
             }
 
@@ -25,9 +25,9 @@ module.exports = {
             const reason = args.slice(1).join(' ') || 'Nenhum motivo fornecido';
 
             // Verificar se o bot pode banir o usuário
-            const targetMember = await message.channel.server.fetchMember(targetId);
+            const targetMember = await message.channel.server.members.get(targetId);
             if (!targetMember) {
-                await message.reply('❌ Usuário não encontrado no servidor!');
+                await message.channel.sendMessage('❌ Usuário não encontrado no servidor!');
                 return;
             }
 
@@ -36,7 +36,7 @@ module.exports = {
                 const serverRole = message.channel.server.roles.get(role);
                 return serverRole && serverRole.permissions.includes('BanMembers');
             })) {
-                await message.reply('❌ Você não pode banir este usuário!');
+                await message.channel.sendMessage('❌ Você não pode banir este usuário!');
                 return;
             }
 
@@ -53,16 +53,16 @@ module.exports = {
                 await message.channel.server.banMember(targetId, reason);
 
                 // Enviar confirmação
-                await message.reply(`✅ Usuário <@${targetId}> foi banido!\n📝 Motivo: ${reason}`);
+                await message.channel.sendMessage(`✅ Usuário <@${targetId}> foi banido!\n📝 Motivo: ${reason}`);
 
             } catch (banError) {
                 console.error('Erro ao banir usuário:', banError);
-                await message.reply(`❌ Não foi possível banir o usuário: ${banError.message}`);
+                await message.channel.sendMessage(`❌ Não foi possível banir o usuário: ${banError.message}`);
             }
 
         } catch (error) {
             console.error('Erro no comando ban:', error);
-            await message.reply(`❌ Ocorreu um erro: ${error.message}`);
+            await message.channel.sendMessage(`❌ Ocorreu um erro: ${error.message}`);
         }
     }
 }; 
