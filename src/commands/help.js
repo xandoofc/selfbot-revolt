@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const sendEmbed = require('../utils/sendEmbed');
 
 module.exports = {
     name: 'help',
@@ -8,6 +9,12 @@ module.exports = {
     cooldown: 5,
     async execute(message, args, client) {
         try {
+            // Verificar se o canal existe
+            if (!message.channel) {
+                console.error('Canal não encontrado na mensagem:', message);
+                return;
+            }
+
             const commands = [];
             const commandFiles = fs.readdirSync(path.join(__dirname)).filter(file => file.endsWith('.js'));
 
@@ -30,23 +37,50 @@ module.exports = {
             });
 
             // Criar mensagem de ajuda
-            let helpMessage = '📚 **Lista de Comandos**\n\n';
+            const description = [
+                '# 📚 Lista de Comandos',
+                'Aqui estão todos os comandos disponíveis organizados por categoria:',
+                ''
+            ];
 
             // Adicionar comandos por categoria
             for (const [category, cmds] of Object.entries(categories)) {
-                helpMessage += `**${category}**\n`;
+                description.push(`## ${category}`);
                 cmds.forEach(cmd => {
-                    helpMessage += `\`!${cmd.name}\` - ${cmd.description}\n`;
+                    description.push(`- \`!${cmd.name}\` - ${cmd.description}`);
                 });
-                helpMessage += '\n';
+                description.push('');
             }
 
+            description.push(
+                '> Use `!comando` para executar um comando',
+                '',
+                '📌 **Links Úteis:**',
+                '[Revolt](https://revolt.chat)',
+                '[GitHub](https://github.com)'
+            );
+
             // Enviar mensagem
-            await message.channel.sendMessage(helpMessage);
+            await sendEmbed(message.channel.id || message.channel, client.token, {
+                title: '📚 Central de Ajuda',
+                description: description.join('\n'),
+                url: 'https://github.com/xandoofc/selfbot-revolt'
+            });
 
         } catch (error) {
             console.error('Erro no comando help:', error);
-            await message.channel.sendMessage(`❌ Ocorreu um erro ao listar os comandos: ${error.message}`);
+            await sendEmbed(message.channel.id || message.channel, client.token, {
+                title: '❌ Erro',
+                description: [
+                    '# Erro ao Listar Comandos',
+                    '',
+                    '```',
+                    error.message,
+                    '```',
+                    '',
+                    '> Por favor, tente novamente mais tarde.'
+                ].join('\n')
+            });
         }
     }
 }; 

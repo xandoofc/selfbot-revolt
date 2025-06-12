@@ -8,7 +8,7 @@ const config = {
 
     // Status settings
     defaultStatus: {
-        text: '🤖 | Ajude com !help',
+        text: '!help',
         presence: 'Online'
     },
 
