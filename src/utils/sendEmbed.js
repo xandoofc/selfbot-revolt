@@ -14,14 +14,14 @@ async function sendEmbed(channel, token, embed) {
         if (!channelId) throw new Error('Canal inválido');
         if (!token) throw new Error('Token não fornecido');
 
-        // Preparar o corpo da requisição
+        // Preparar o corpo da requisição com campos mínimos necessários
         const payload = {
             content: "",
             embeds: [{
+                type: "text",
                 title: embed.title || "",
                 description: embed.description || "",
-                colour: "#a81808",
-                url: embed.url || "https://github.com/xandoofc/selfbot-revolt"
+                colour: "#a81808"
             }]
         };
 
