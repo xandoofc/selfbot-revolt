@@ -16,7 +16,7 @@ module.exports = {
                     .setDescription('Por favor, forneça um link! Exemplo: !dl https://www.tiktok.com/...')
                     .setTimestamp();
 
-                await message.reply(formatter.toJSON());
+                await client.sendMessage(message.channel, formatter.toJSON());
                 return;
             }
 
@@ -33,7 +33,7 @@ module.exports = {
                 .setDescription('⏳ Baixando mídia, aguarde...')
                 .setTimestamp();
 
-            const statusMessage = await message.reply(formatter.toJSON());
+            const statusMessage = await client.sendMessage(message.channel, formatter.toJSON());
 
             // Usar yt-dlp para baixar o conteúdo
             const outputTemplate = path.join(downloadDir, '%(title)s.%(ext)s');
@@ -49,7 +49,7 @@ module.exports = {
                         .setDescription(`Não foi possível baixar a mídia: ${error.message}`)
                         .setTimestamp();
 
-                    await message.reply(errorFormatter.toJSON());
+                    await client.sendMessage(message.channel, errorFormatter.toJSON());
                     return;
                 }
 
@@ -68,7 +68,7 @@ module.exports = {
                         .setDescription('Não foi possível encontrar o arquivo baixado.')
                         .setTimestamp();
 
-                    await message.reply(errorFormatter.toJSON());
+                    await client.sendMessage(message.channel, errorFormatter.toJSON());
                     return;
                 }
 
@@ -76,7 +76,7 @@ module.exports = {
 
                 try {
                     // Enviar o arquivo
-                    await message.channel.sendFile(filePath);
+                    await client.uploadFile(message.channel, filePath);
 
                     // Atualizar mensagem de status
                     const successFormatter = new MessageFormatter()
@@ -84,7 +84,7 @@ module.exports = {
                         .setDescription('✅ Mídia baixada e enviada com sucesso!')
                         .setTimestamp();
 
-                    await message.reply(successFormatter.toJSON());
+                    await client.sendMessage(message.channel, successFormatter.toJSON());
 
                     // Limpar o arquivo após o envio
                     fs.unlinkSync(filePath);
@@ -95,7 +95,7 @@ module.exports = {
                         .setDescription(`Erro ao enviar arquivo: ${uploadError.message}`)
                         .setTimestamp();
 
-                    await message.reply(errorFormatter.toJSON());
+                    await client.sendMessage(message.channel, errorFormatter.toJSON());
                 }
             });
         } catch (error) {
@@ -105,7 +105,7 @@ module.exports = {
                 .setDescription(`Ocorreu um erro: ${error.message}`)
                 .setTimestamp();
 
-            await message.reply(formatter.toJSON());
+            await client.sendMessage(message.channel, formatter.toJSON());
         }
     }
 }; 
