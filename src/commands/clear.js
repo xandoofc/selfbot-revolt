@@ -11,17 +11,13 @@ module.exports = {
                 const serverRole = message.channel.server.roles.get(role);
                 return serverRole && serverRole.permissions.includes('ManageMessages');
             })) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Você não tem permissão para usar este comando!'
-                });
+                await message.reply('❌ Você não tem permissão para usar este comando!');
                 return;
             }
 
             // Verificar se um número foi fornecido
             if (!args.length) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Por favor, forneça o número de mensagens para deletar! Exemplo: !clear 10'
-                });
+                await message.reply('❌ Por favor, forneça o número de mensagens para deletar! Exemplo: !clear 10');
                 return;
             }
 
@@ -29,17 +25,13 @@ module.exports = {
 
             // Verificar se o número é válido
             if (isNaN(amount)) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Por favor, forneça um número válido!'
-                });
+                await message.reply('❌ Por favor, forneça um número válido!');
                 return;
             }
 
             // Verificar se o número está dentro do limite
             if (amount < 1 || amount > 100) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ O número de mensagens deve estar entre 1 e 100!'
-                });
+                await message.reply('❌ O número de mensagens deve estar entre 1 e 100!');
                 return;
             }
 
@@ -53,9 +45,7 @@ module.exports = {
                 await message.channel.deleteMessages(messages.map(m => m._id));
 
                 // Enviar confirmação
-                const response = await client.sendMessage(message.channel, {
-                    content: `✅ ${amount} mensagens foram deletadas!`
-                });
+                const response = await message.reply(`✅ ${amount} mensagens foram deletadas!`);
 
                 // Deletar mensagem de confirmação após 5 segundos
                 setTimeout(async () => {
@@ -68,16 +58,12 @@ module.exports = {
 
             } catch (error) {
                 console.error('Erro ao deletar mensagens:', error);
-                await client.sendMessage(message.channel, {
-                    content: `❌ Erro ao deletar mensagens: ${error.message}`
-                });
+                await message.reply(`❌ Erro ao deletar mensagens: ${error.message}`);
             }
 
         } catch (error) {
             console.error('Erro no comando clear:', error);
-            await client.sendMessage(message.channel, {
-                content: `❌ Ocorreu um erro: ${error.message}`
-            });
+            await message.reply(`❌ Ocorreu um erro: ${error.message}`);
         }
     }
 }; 

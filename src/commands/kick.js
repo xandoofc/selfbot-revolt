@@ -14,17 +14,13 @@ module.exports = {
                 const serverRole = message.channel.server.roles.get(role);
                 return serverRole && serverRole.permissions.includes('KickMembers');
             })) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Você não tem permissão para expulsar membros!'
-                });
+                await message.reply('❌ Você não tem permissão para expulsar membros!');
                 return;
             }
 
             // Verificar se um usuário foi mencionado
             if (!message.mentions?.length) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Por favor, mencione o usuário que deseja expulsar! Exemplo: !kick @usuário [motivo]'
-                });
+                await message.reply('❌ Por favor, mencione o usuário que deseja expulsar! Exemplo: !kick @usuário [motivo]');
                 return;
             }
 
@@ -34,9 +30,7 @@ module.exports = {
             // Verificar se o bot pode expulsar o usuário
             const targetMember = await message.channel.server.fetchMember(targetId);
             if (!targetMember) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Usuário não encontrado no servidor!'
-                });
+                await message.reply('❌ Usuário não encontrado no servidor!');
                 return;
             }
 
@@ -45,9 +39,7 @@ module.exports = {
                 const serverRole = message.channel.server.roles.get(role);
                 return serverRole && serverRole.permissions.includes('KickMembers');
             })) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Você não pode expulsar este usuário!'
-                });
+                await message.reply('❌ Você não pode expulsar este usuário!');
                 return;
             }
 
@@ -56,32 +48,24 @@ module.exports = {
                 await message.channel.server.kickMember(targetId, reason);
 
                 // Enviar confirmação
-                await client.sendMessage(message.channel, {
-                    content: `✅ Usuário <@${targetId}> foi expulso!\n📝 Motivo: ${reason}`
-                });
+                await message.reply(`✅ Usuário <@${targetId}> foi expulso!\n📝 Motivo: ${reason}`);
 
                 // Tentar notificar o usuário
                 try {
                     const dmChannel = await client.users.createDM(targetId);
-                    await client.sendMessage(dmChannel, {
-                        content: `🚫 Você foi expulso do servidor ${message.channel.server.name}\n📝 Motivo: ${reason}`
-                    });
+                    await dmChannel.sendMessage(`🚫 Você foi expulso do servidor ${message.channel.server.name}\n📝 Motivo: ${reason}`);
                 } catch (dmError) {
                     console.error('Erro ao enviar DM para o usuário:', dmError);
                 }
 
             } catch (kickError) {
                 console.error('Erro ao expulsar usuário:', kickError);
-                await client.sendMessage(message.channel, {
-                    content: `❌ Não foi possível expulsar o usuário: ${kickError.message}`
-                });
+                await message.reply(`❌ Não foi possível expulsar o usuário: ${kickError.message}`);
             }
 
         } catch (error) {
             console.error('Erro no comando kick:', error);
-            await client.sendMessage(message.channel, {
-                content: `❌ Ocorreu um erro: ${error.message}`
-            });
+            await message.reply(`❌ Ocorreu um erro: ${error.message}`);
         }
     }
 }; 

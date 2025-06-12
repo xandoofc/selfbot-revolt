@@ -11,17 +11,13 @@ module.exports = {
                 const serverRole = message.channel.server.roles.get(role);
                 return serverRole && serverRole.permissions.includes('BanMembers');
             })) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Você não tem permissão para banir membros!'
-                });
+                await message.reply('❌ Você não tem permissão para banir membros!');
                 return;
             }
 
             // Verificar se um usuário foi mencionado
             if (!message.mentions?.length) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Por favor, mencione o usuário que deseja banir! Exemplo: !ban @usuário [motivo]'
-                });
+                await message.reply('❌ Por favor, mencione o usuário que deseja banir! Exemplo: !ban @usuário [motivo]');
                 return;
             }
 
@@ -31,9 +27,7 @@ module.exports = {
             // Verificar se o bot pode banir o usuário
             const targetMember = await message.channel.server.fetchMember(targetId);
             if (!targetMember) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Usuário não encontrado no servidor!'
-                });
+                await message.reply('❌ Usuário não encontrado no servidor!');
                 return;
             }
 
@@ -42,9 +36,7 @@ module.exports = {
                 const serverRole = message.channel.server.roles.get(role);
                 return serverRole && serverRole.permissions.includes('BanMembers');
             })) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Você não pode banir este usuário!'
-                });
+                await message.reply('❌ Você não pode banir este usuário!');
                 return;
             }
 
@@ -52,9 +44,7 @@ module.exports = {
                 // Tentar notificar o usuário antes do banimento
                 try {
                     const dmChannel = await client.users.createDM(targetId);
-                    await client.sendMessage(dmChannel, {
-                        content: `⛔ Você foi banido do servidor ${message.channel.server.name}\n📝 Motivo: ${reason}`
-                    });
+                    await dmChannel.sendMessage(`⛔ Você foi banido do servidor ${message.channel.server.name}\n📝 Motivo: ${reason}`);
                 } catch (dmError) {
                     console.error('Erro ao enviar DM para o usuário:', dmError);
                 }
@@ -63,22 +53,16 @@ module.exports = {
                 await message.channel.server.banMember(targetId, reason);
 
                 // Enviar confirmação
-                await client.sendMessage(message.channel, {
-                    content: `✅ Usuário <@${targetId}> foi banido!\n📝 Motivo: ${reason}`
-                });
+                await message.reply(`✅ Usuário <@${targetId}> foi banido!\n📝 Motivo: ${reason}`);
 
             } catch (banError) {
                 console.error('Erro ao banir usuário:', banError);
-                await client.sendMessage(message.channel, {
-                    content: `❌ Não foi possível banir o usuário: ${banError.message}`
-                });
+                await message.reply(`❌ Não foi possível banir o usuário: ${banError.message}`);
             }
 
         } catch (error) {
             console.error('Erro no comando ban:', error);
-            await client.sendMessage(message.channel, {
-                content: `❌ Ocorreu um erro: ${error.message}`
-            });
+            await message.reply(`❌ Ocorreu um erro: ${error.message}`);
         }
     }
 }; 

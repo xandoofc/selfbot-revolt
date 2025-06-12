@@ -11,9 +11,7 @@ module.exports = {
                 : message.author;
 
             if (!targetUser) {
-                await client.sendMessage(message.channel, {
-                    content: '❌ Usuário não encontrado.'
-                });
+                await message.reply('❌ Usuário não encontrado.');
                 return;
             }
 
@@ -61,15 +59,11 @@ module.exports = {
                 serverInfo;
 
             // Enviar a mensagem
-            await client.sendMessage(message.channel, {
-                content: userInfo
-            });
+            await message.reply(userInfo);
 
         } catch (error) {
             console.error('Erro ao mostrar informações do usuário:', error);
-            await client.sendMessage(message.channel, {
-                content: `❌ Ocorreu um erro ao buscar informações do usuário: ${error.message}`
-            });
+            await message.reply(`❌ Ocorreu um erro ao buscar informações do usuário: ${error.message}`);
         }
     }
 }; 
