@@ -3,105 +3,78 @@ const Permissions = require('../utils/Permissions');
 
 module.exports = {
     name: 'kick',
-    description: 'Expulsa um ou mais usuários do servidor',
+    description: 'Expulsa um usuário do servidor',
     category: 'Moderação',
     cooldown: 5,
     async execute(message, args, client) {
         try {
-            if (!message.member?._id?.server) {
-                const embed = new MessageEmbed()
-                    .setTitle('❌ Erro')
-                    .setDescription('Este comando só pode ser usado em servidores!')
-                    .setColor('#FF0000')
-                    .setTimestamp();
-                
-                await client.sendMessage(message.channel, embed.toJSON());
+            // Verificar permissões
+            if (!message.member.hasPermission('KickMembers')) {
+                await client.sendMessage(message.channel, {
+                    content: '❌ Você não tem permissão para expulsar membros!'
+                });
                 return;
             }
 
-            // Verifica permissões
-            if (!await Permissions.checkPermission(
-                client,
-                message,
-                Permissions.FLAGS.KICK_MEMBERS,
-                'Você precisa ter permissão para expulsar membros para usar este comando.'
-            )) return;
-
-            if (!message.mentions || message.mentions.length === 0) {
-                const embed = new MessageEmbed()
-                    .setTitle('❌ Erro')
-                    .setDescription('Mencione pelo menos um usuário! Exemplo: !kick @user1 @user2 [razão]')
-                    .setColor('#FF0000')
-                    .setTimestamp();
-                
-                await client.sendMessage(message.channel, embed.toJSON());
+            // Verificar se um usuário foi mencionado
+            if (!message.mentions?.length) {
+                await client.sendMessage(message.channel, {
+                    content: '❌ Por favor, mencione o usuário que deseja expulsar! Exemplo: !kick @usuário [motivo]'
+                });
                 return;
             }
 
-            // Extrai a razão do kick (tudo após as menções)
-            const reason = args.slice(message.mentions.length).join(' ') || 'Nenhuma razão fornecida';
+            const targetId = message.mentions[0];
+            const reason = args.slice(1).join(' ') || 'Nenhum motivo fornecido';
 
-            let kickedCount = 0;
-            const kickedUsers = [];
+            // Verificar se o bot pode expulsar o usuário
+            const targetMember = await message.channel.server.fetchMember(targetId);
+            if (!targetMember) {
+                await client.sendMessage(message.channel, {
+                    content: '❌ Usuário não encontrado no servidor!'
+                });
+                return;
+            }
 
-            for (const targetId of message.mentions) {
-                if (targetId === client.userId) {
-                    console.log('Ignorando tentativa de expulsar o bot');
-                    continue;
-                }
+            // Verificar se o usuário tem permissão para expulsar o alvo
+            if (targetMember.hasPermission('KickMembers')) {
+                await client.sendMessage(message.channel, {
+                    content: '❌ Você não pode expulsar este usuário!'
+                });
+                return;
+            }
 
-                // Obtém informações do usuário antes de expulsar
-                const userResponse = await fetch(`${client.config.api.baseUrl}/users/${targetId}`, {
-                    headers: { 'x-session-token': client.token }
+            try {
+                // Tentar expulsar o usuário
+                await message.channel.server.kickMember(targetId, reason);
+
+                // Enviar confirmação
+                await client.sendMessage(message.channel, {
+                    content: `✅ Usuário <@${targetId}> foi expulso!\n📝 Motivo: ${reason}`
                 });
 
-                let username = targetId;
-                if (userResponse.ok) {
-                    const userData = await userResponse.json();
-                    username = `${userData.username}#${userData.discriminator}`;
+                // Tentar notificar o usuário
+                try {
+                    const dmChannel = await client.users.createDM(targetId);
+                    await client.sendMessage(dmChannel, {
+                        content: `🚫 Você foi expulso do servidor ${message.channel.server.name}\n📝 Motivo: ${reason}`
+                    });
+                } catch (dmError) {
+                    console.error('Erro ao enviar DM para o usuário:', dmError);
                 }
 
-                const kickResponse = await fetch(
-                    `${client.config.api.baseUrl}/servers/${message.member._id.server}/members/${targetId}`,
-                    {
-                        method: 'DELETE',
-                        headers: { 'x-session-token': client.token }
-                    }
-                );
-
-                if (kickResponse.ok) {
-                    kickedCount++;
-                    kickedUsers.push(username);
-                } else {
-                    console.error(`Erro ao expulsar usuário ${targetId}:`, await kickResponse.text());
-                }
+            } catch (kickError) {
+                console.error('Erro ao expulsar usuário:', kickError);
+                await client.sendMessage(message.channel, {
+                    content: `❌ Não foi possível expulsar o usuário: ${kickError.message}`
+                });
             }
 
-            const embed = new MessageEmbed()
-                .setTitle('👢 Kick')
-                .setDescription(`${kickedCount} usuário(s) foram expulsos.`)
-                .setColor('#FFA500')
-                .setTimestamp();
-
-            if (kickedUsers.length > 0) {
-                embed.addField('Usuários Expulsos', kickedUsers.join('\n'));
-            }
-            
-            embed.addField('Razão', reason)
-                .setFooter(`Expulso por ${message.author}`);
-
-            await client.sendMessage(message.channel, embed.toJSON());
         } catch (error) {
-            console.error('Erro ao expulsar usuários:', error);
-            
-            const embed = new MessageEmbed()
-                .setTitle('❌ Erro')
-                .setDescription(`Erro ao expulsar usuários: ${error.message}`)
-                .setColor('#FF0000')
-                .setFooter(`Comando usado por ${message.author}`)
-                .setTimestamp();
-
-            await client.sendMessage(message.channel, embed.toJSON());
+            console.error('Erro no comando kick:', error);
+            await client.sendMessage(message.channel, {
+                content: `❌ Ocorreu um erro: ${error.message}`
+            });
         }
     }
 }; 

@@ -1,92 +1,75 @@
-const MessageFormatter = require('../utils/MessageEmbed');
-
 module.exports = {
     name: 'user',
     description: 'Mostra informações sobre um usuário',
-    category: 'Geral',
-    cooldown: 3,
+    category: 'Informação',
+    cooldown: 5,
     async execute(message, args, client) {
         try {
-            if (!message.mentions || message.mentions.length === 0) {
-                const formatter = new MessageFormatter()
-                    .setTitle('Erro')
-                    .setDescription('Mencione um usuário! Exemplo: !user @xando')
-                    .setTimestamp();
+            // Pegar o usuário mencionado ou o autor da mensagem
+            const targetUser = message.mentions?.length > 0 
+                ? await client.users.fetch(message.mentions[0])
+                : message.author;
 
-                await client.sendMessage(message.channel, formatter.toJSON());
+            if (!targetUser) {
+                await client.sendMessage(message.channel, {
+                    content: '❌ Usuário não encontrado.'
+                });
                 return;
             }
 
-            const userId = message.mentions[0];
-            const response = await fetch(`${client.config.api.baseUrl}/users/${userId}`, {
-                headers: { 'x-session-token': client.token }
+            // Formatar data de criação da conta
+            const createdAt = new Date(targetUser.createdAt);
+            const createdAtFormatted = createdAt.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-            }
+            // Pegar informações do servidor se disponível
+            let serverInfo = '';
+            if (message.channel.server) {
+                const member = await message.channel.server.fetchMember(targetUser._id);
+                if (member) {
+                    const joinedAt = new Date(member.joinedAt);
+                    const joinedAtFormatted = joinedAt.toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
 
-            const user = await response.json();
-            
-            const formatter = new MessageFormatter()
-                .setTitle('Informações do Usuário')
-                .addField('Nome', `${user.username}#${user.discriminator}`)
-                .addField('ID', user._id);
+                    const roles = member.roles
+                        .map(roleId => message.channel.server.roles.get(roleId))
+                        .filter(role => role)
+                        .map(role => role.name)
+                        .join(', ');
 
-            // Adiciona status se disponível
-            if (user.status) {
-                if (user.status.text) {
-                    formatter.addField('Status', user.status.text);
-                }
-                if (user.status.presence) {
-                    formatter.addField('Presença', user.status.presence);
-                }
-            }
-
-            // Adiciona informações do avatar se disponível
-            if (user.avatar) {
-                formatter.addField('Avatar', `${client.config.api.baseUrl}/avatars/${user.avatar._id}`);
-            }
-
-            // Se a mensagem for de um servidor, tenta obter informações do membro
-            if (message.member?._id?.server) {
-                try {
-                    const memberResponse = await fetch(
-                        `${client.config.api.baseUrl}/servers/${message.member._id.server}/members/${userId}`,
-                        { headers: { 'x-session-token': client.token } }
-                    );
-
-                    if (memberResponse.ok) {
-                        const memberInfo = await memberResponse.json();
-                        
-                        // Adiciona roles se disponível
-                        if (memberInfo.roles && memberInfo.roles.length > 0) {
-                            formatter.addField('Cargos', memberInfo.roles.join(', '));
-                        }
-
-                        // Adiciona data de entrada
-                        if (memberInfo.joined_at) {
-                            const joinDate = new Date(memberInfo.joined_at);
-                            formatter.addField('Entrou em', `<t:${Math.floor(joinDate.getTime() / 1000)}:F>`);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Erro ao obter informações do membro:', error);
+                    serverInfo = `\n📅 **Entrou no servidor em:** ${joinedAtFormatted}\n` +
+                        `👥 **Cargos:** ${roles || 'Nenhum'}`;
                 }
             }
 
-            formatter.setTimestamp();
-            await client.sendMessage(message.channel, formatter.toJSON());
+            // Construir a mensagem
+            const userInfo = `👤 **Informações do Usuário**\n\n` +
+                `🆔 **ID:** ${targetUser._id}\n` +
+                `👤 **Username:** ${targetUser.username}\n` +
+                `📝 **Conta criada em:** ${createdAtFormatted}\n` +
+                `🤖 **Bot:** ${targetUser.bot ? 'Sim' : 'Não'}` +
+                serverInfo;
+
+            // Enviar a mensagem
+            await client.sendMessage(message.channel, {
+                content: userInfo
+            });
 
         } catch (error) {
-            console.error('Erro ao obter informações do usuário:', error);
-            
-            const formatter = new MessageFormatter()
-                .setTitle('Erro')
-                .setDescription(`Erro ao obter informações do usuário: ${error.message}`)
-                .setTimestamp();
-
-            await client.sendMessage(message.channel, formatter.toJSON());
+            console.error('Erro ao mostrar informações do usuário:', error);
+            await client.sendMessage(message.channel, {
+                content: `❌ Ocorreu um erro ao buscar informações do usuário: ${error.message}`
+            });
         }
     }
 }; 

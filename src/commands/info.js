@@ -1,50 +1,42 @@
-const MessageFormatter = require('../utils/MessageEmbed');
+const os = require('os');
 
 module.exports = {
     name: 'info',
-    description: 'Mostra informações sobre o servidor',
-    category: 'Geral',
-    cooldown: 3,
+    description: 'Mostra informações sobre o bot',
+    category: 'Informação',
+    cooldown: 5,
     async execute(message, args, client) {
         try {
-            if (!message.member?._id?.server) {
-                const formatter = new MessageFormatter()
-                    .setTitle('Erro')
-                    .setDescription('Este comando só pode ser usado em servidores!')
-                    .setTimestamp();
-                
-                await client.sendMessage(message.channel, formatter.toJSON());
-                return;
-            }
+            const uptime = process.uptime();
+            const days = Math.floor(uptime / 86400);
+            const hours = Math.floor((uptime % 86400) / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            const seconds = Math.floor(uptime % 60);
 
-            const response = await fetch(`${client.config.api.baseUrl}/servers/${message.member._id.server}`, {
-                headers: { 'x-session-token': client.token }
+            const uptimeStr = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+            const memoryUsage = process.memoryUsage();
+            const usedMemoryMB = Math.round(memoryUsage.heapUsed / 1024 / 1024 * 100) / 100;
+            const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024 * 100) / 100;
+
+            const info = `🤖 **Informações do Bot**\n\n` +
+                `📊 **Status**\n` +
+                `⏰ Uptime: ${uptimeStr}\n` +
+                `💾 Memória: ${usedMemoryMB}MB / ${totalMemoryMB}MB\n` +
+                `🖥️ CPU: ${os.cpus()[0].model}\n` +
+                `💻 Sistema: ${os.type()} ${os.release()}\n\n` +
+                `📈 **Estatísticas**\n` +
+                `🗂️ Comandos: ${client.commands.size}\n` +
+                `🌐 Ping: ${client.websocket.ping}ms`;
+
+            await client.sendMessage(message.channel, {
+                content: info
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-            }
-
-            const server = await response.json();
-            
-            const formatter = new MessageFormatter()
-                .setTitle('Informações do Servidor')
-                .addField('Nome', server.name)
-                .addField('ID', server._id)
-                .addField('Descrição', server.description || 'Nenhuma')
-                .addField('Dono', server.owner)
-                .setTimestamp();
-
-            await client.sendMessage(message.channel, formatter.toJSON());
         } catch (error) {
-            console.error('Erro ao obter informações do servidor:', error);
-            
-            const formatter = new MessageFormatter()
-                .setTitle('Erro')
-                .setDescription(`Erro ao obter informações do servidor: ${error.message}`)
-                .setTimestamp();
-
-            await client.sendMessage(message.channel, formatter.toJSON());
+            console.error('Erro ao mostrar informações:', error);
+            await client.sendMessage(message.channel, {
+                content: `❌ Ocorreu um erro ao buscar informações: ${error.message}`
+            });
         }
     }
 }; 

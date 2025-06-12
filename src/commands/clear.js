@@ -1,87 +1,79 @@
-const MessageEmbed = require('../utils/MessageEmbed');
-const Permissions = require('../utils/Permissions');
-
 module.exports = {
     name: 'clear',
-    description: 'Deleta mensagens do canal',
-    cooldown: 10,
+    description: 'Limpa mensagens do canal',
+    category: 'Moderação',
+    cooldown: 5,
     async execute(message, args, client) {
         try {
-            // Verifica permissões
-            if (!await Permissions.checkPermission(
-                client,
-                message,
-                Permissions.FLAGS.MANAGE_MESSAGES,
-                'Você precisa ter permissão para gerenciar mensagens para usar este comando.'
-            )) return;
-
-            const count = parseInt(args[0]);
-            if (isNaN(count) || count <= 0 || count > 100) {
-                const embed = new MessageEmbed()
-                    .setTitle('❌ Erro')
-                    .setDescription('Por favor, forneça um número válido entre 1 e 100!')
-                    .setColor('#FF0000')
-                    .setFooter(`Comando usado por ${message.author}`)
-                    .setTimestamp();
-
-                await client.sendMessage(message.channel, embed.toJSON());
+            // Verificar permissões
+            if (!message.member.hasPermission('ManageMessages')) {
+                await client.sendMessage(message.channel, {
+                    content: '❌ Você não tem permissão para usar este comando!'
+                });
                 return;
             }
 
-            const response = await fetch(`${client.config.api.baseUrl}/channels/${message.channel}/messages?limit=${count}`, {
-                headers: { 'x-session-token': client.token }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            // Verificar se um número foi fornecido
+            if (!args.length) {
+                await client.sendMessage(message.channel, {
+                    content: '❌ Por favor, forneça o número de mensagens para deletar! Exemplo: !clear 10'
+                });
+                return;
             }
 
-            const messages = await response.json();
-            let deletedCount = 0;
+            const amount = parseInt(args[0]);
 
-            for (const msg of messages) {
-                const deleteResponse = await fetch(`${client.config.api.baseUrl}/channels/${message.channel}/messages/${msg._id}`, {
-                    method: 'DELETE',
-                    headers: { 'x-session-token': client.token }
+            // Verificar se o número é válido
+            if (isNaN(amount)) {
+                await client.sendMessage(message.channel, {
+                    content: '❌ Por favor, forneça um número válido!'
+                });
+                return;
+            }
+
+            // Verificar se o número está dentro do limite
+            if (amount < 1 || amount > 100) {
+                await client.sendMessage(message.channel, {
+                    content: '❌ O número de mensagens deve estar entre 1 e 100!'
+                });
+                return;
+            }
+
+            try {
+                // Buscar mensagens
+                const messages = await message.channel.fetchMessages({
+                    limit: amount
                 });
 
-                if (deleteResponse.ok) {
-                    deletedCount++;
-                }
+                // Deletar mensagens
+                await message.channel.deleteMessages(messages.map(m => m._id));
+
+                // Enviar confirmação
+                const response = await client.sendMessage(message.channel, {
+                    content: `✅ ${amount} mensagens foram deletadas!`
+                });
+
+                // Deletar mensagem de confirmação após 5 segundos
+                setTimeout(async () => {
+                    try {
+                        await message.channel.deleteMessages([response._id]);
+                    } catch (error) {
+                        console.error('Erro ao deletar mensagem de confirmação:', error);
+                    }
+                }, 5000);
+
+            } catch (error) {
+                console.error('Erro ao deletar mensagens:', error);
+                await client.sendMessage(message.channel, {
+                    content: `❌ Erro ao deletar mensagens: ${error.message}`
+                });
             }
 
-            const embed = new MessageEmbed()
-                .setTitle('🗑️ Mensagens Deletadas')
-                .setDescription(`${deletedCount} mensagens foram deletadas com sucesso.`)
-                .setColor('#00FF00')
-                .setFooter(`Solicitado por ${message.author}`)
-                .setTimestamp();
-
-            const responseMsg = await client.sendMessage(message.channel, embed.toJSON());
-
-            // Auto-delete da mensagem de confirmação após 5 segundos
-            setTimeout(async () => {
-                try {
-                    await fetch(`${client.config.api.baseUrl}/channels/${message.channel}/messages/${responseMsg._id}`, {
-                        method: 'DELETE',
-                        headers: { 'x-session-token': client.token }
-                    });
-                } catch (error) {
-                    console.error('Erro ao deletar mensagem de confirmação:', error);
-                }
-            }, 5000);
-
         } catch (error) {
-            console.error('Erro ao deletar mensagens:', error);
-            
-            const embed = new MessageEmbed()
-                .setTitle('❌ Erro')
-                .setDescription(`Erro ao deletar mensagens: ${error.message}`)
-                .setColor('#FF0000')
-                .setFooter(`Comando usado por ${message.author}`)
-                .setTimestamp();
-
-            await client.sendMessage(message.channel, embed.toJSON());
+            console.error('Erro no comando clear:', error);
+            await client.sendMessage(message.channel, {
+                content: `❌ Ocorreu um erro: ${error.message}`
+            });
         }
     }
 }; 
